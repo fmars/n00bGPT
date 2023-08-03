@@ -63,7 +63,7 @@ Goal: Grasping the key concepts of Transformers through paper reading.
 - [Embedding and word2vec](https://arxiv.org/abs/1301.3781)
   - If the concept of embedding sounds unfamiliar to you, this paper is for you.
 
-#### Fun Questions to Test Ourselves
+#### Fun Questions
 - Does transformer incluse its own word embedding and trained together with attention layers? Or it takes embedding as input trained from somewhere else?
   - The paper doesn't explicitly mention this detailed engineering question, but most Transformer implementations I've seen include their own word embeddings and train them along with attention layers.
 
@@ -97,8 +97,8 @@ Goal: Grasping the key concepts of Transformers through paper reading.
   - This process is repeated until the desired length or condition is met.
 
 - What loss function does it use?
-- Different tasks in Transformers use different loss functions.
-- For language translation, it uses cross-entropy, treating it as a classification problem where the next word is the label, and the model output is the probability distribution over the vocabulary.
+  - Different tasks in Transformers use different loss functions.
+  - For language translation, it uses cross-entropy, treating it as a classification problem where the next word is the label, and the model output is the probability distribution over the vocabulary.
 
 
 
