@@ -19,6 +19,8 @@ You probably don't need to read all of them. But those are what I know before th
 
 ## 1. Kaggle competition
 
+Goal: use it before understand it. Train and inference a transformer model by Huggingface
+
 Study for study is boring. Study for competition is fun! [LLM Science Exam](https://www.kaggle.com/competitions/kaggle-llm-science-exam) is what we need. Little prior knowledge required. You can build and train you very first transformer model now! Get a fresh touch, and also obviously a low rank on leaderboard. Create questions in mind, study knowledges below, and make our rank higher!
 
 [llm-notebook](https://github.com/fmars/n00bGPT/blob/main/llm-science-exam-s1.ipynb) is our first trial. The score wasn't high but that's ok. We got fresh touch on transformer, and played with it!
@@ -47,25 +49,54 @@ Study for study is boring. Study for competition is fun! [LLM Science Exam](http
   
 
 ### 1. Attention is all you need
+
+Goal: understand major concepts of transformer by paper reading
 #### Reading list
-- 
-- Self attention and Transformer: explanation of Attention is all you Need
-http://jalammar.github.io/illustrated-transformer/ 
-Attention mechanism in RNN
-https://jalammar.github.io/visualizing-neural-machine-translation-mechanics-of-seq2seq-models-with-attention/ 
-Word embedding
-https://machinelearningmastery.com/what-are-word-embeddings/ 
+- [Atention is all you need](https://arxiv.org/abs/1706.03762)
+  - The original proposal of transformer. Get some rough ideas. If you still don't understand how it actually works, that's okay. I didn't either. Following blogs provide intuitive explainations.
+- [Attention mechnism explained by Jay Alammar](https://jalammar.github.io/visualizing-neural-machine-translation-mechanics-of-seq2seq-models-with-attention/)
+  - Not neccessarily need to understand RNN (I still don't), though it helps build up the intuition of attention
+- [The Illustrated Transformer by Jay Alammar](http://jalammar.github.io/illustrated-transformer/)
+  - Step-by-step visualized explanation of attention and transformer. Quite clear and detailed.
+  - You should know how does transformer work at high level, after reading this. It's okay if some details still feel confusing. It'll all be resolved once we write our own transformer model
+- [Embedding and word2vec](https://arxiv.org/abs/1301.3781)
+  - If the concept of embedding sounds unfamiliar to you, this paper is for you.
+  - Again, it's totally fine if you don't fully understand the details. We'll build our own word2vec as well
 
-asdf 
-asdf asdf sadf 
+#### Fun Questions to Test Ourselves
+- Does transformer incluse its own word embedding and trained together with attention layers? Or it takes embedding as input trained from somewhere else?
+  - Paper doesn't mention this (likely a too detailed engineering question), but seems the answer is yes for most of transformer implementations I have seen.
+- The model architecture seems to work for language translation. But how does that work for tasks, e.g. multiple choice, question answering, text summarization, etc?
+  - Only using the model arch in paper itself won't. The task head comes into play. Attention/transformer can be thought of as a fundation that stores the universal general knowledges. A task specific head arch is added on top of it, to produce task specific output.
+  - Take a read on Huggingface transformer implementation. The idea will be clear. We'll also get hands on experience on this when wring our own model, with a Language Model Head for text generation.
+- How large is a transformer model? How much is dense and how much is sparse?
+  - It seems attention layer is quite small, just some MLP layers. How can modern LLM models use tens of even hundreds of billions of parameters.
+  - Parameter here refers to learnable parameters, i.e. the weights defined in init() method in torch.nn.module. Major parameters include
+      - Attention QKV metrix: 3 * emb_dim * emb_dim
+      - Attention projection layer: emb_dim * emb_dim
+      - Feed forward: 4 * emb_dim * emb_dim + emb_dim * emb_dim
+      - Word embedding: emb_dim * vocab_size
+      - Position embedding: seq_len * emb_dim
+  - Note that, it seems LLM folks usually call emb_dim as model_dim.
+  - We also need to multiple the first 3 by the number of layers. Confirmed by a friend, who cannot reveal the actual number, this calculation is right and will get to hundreds of billions under production setup.
+- How can PyTorch autograd compute the grad for a particular row in a embedding table?
+  - Transformer (and all other use cases as well) doesn't use entire embedding table but some of rows during each training batch. So the gradient and weights update should only happen to those rows
+  - TODO look into how does Pytorch implement such partial-tensor. I thought it's computed at tensor level.
+- In text generation (e.g. ChatGPT) how does transformer know when to stop generating new words? 
+  -   Transformer generates a new word at a time. Some API takes num_word_to_generate as input for inference. If it's not provided (which is the case in ChatGPT), how does it know when to stop.
+  -   I suspect there is a special token, e.g. session end, etc. Generation stops when such token is generated.
+- What is an autoregressive language model?
+  - Autoregressive model in statistics, refers to the model that makes prediction for a time series data based on previous data point in the time series
+  - Auto refers to self: model uses its own output from previous prediction as input for generating the next word
+  - Regressive refers to looking backward: model use previous data point to predict next data point
+- What is Beam search in LLM/sampling?
+  - When generate the next word, instead of always use the highest probability one, it pick top k words and generate k sequences. 
+  - In next step generates k sub-sequence for each sequence thus in totally k*k sequences
+  - It then runs pruning and only keep top-k quality sequence
+  - And repeat above steps
+- What loss function does it use?
+  - Different tasks use different loss functions
+  - Cross entropy for language translation. Think of as a classification problem. Next work can be thought of as the label. And the output of the model is the probability of each word in the vocabulary. 
 
-asdf asdf 
 
-Questions
-How is one language translated to another, i.e. how is the output of encoder processed in decoder?
-How is transformer, seq-to-seq model be used in other tasks, e.g. multiple choice, question answering, text summarization, etc
-Look into how is hugging face version implemented?
-How large is a transformer model? How much is dense and how much is sparse?
-How is words embedding calculated?
-What loss function does it use? How does benchmark work? 
-How can PyTorch autograd compute the grad for a particular element or row in a metrics for embedding table?
+
