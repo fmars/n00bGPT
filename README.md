@@ -43,7 +43,7 @@ Learning for learning's sake is tedious. Competing in [LLM Science Exam](https:/
 
 [llm-notebook](https://github.com/fmars/n00bGPT/blob/main/llm-science-exam-s1.ipynb) is our first trial. The score wasn't high but that's ok.
 
-
+Checkout class diagram of [huggingface major abstractions](https://github.com/fmars/n00bGPT/blob/main/huggingface_class_diagram.md).
 - [HuggingFace Datasets](https://huggingface.co/docs/datasets/index) 
   - The library to access and process the data, in a very easy way!
   - `Dataset::load_dataset()`, with split, config
@@ -52,108 +52,18 @@ Learning for learning's sake is tedious. Competing in [LLM Science Exam](https:/
 - [HuggingFace Transformers](https://huggingface.co/docs/transformers/index)
   - The library to download, fine-tune and inference the pretrained models, in a even easier way!
   - [AutoTokenizer](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/tokenization_utils_base.py#L1494)
-    - `AutoTokenizer::from_pretrained() -> TokenizerBase`. A concrete derived class will be returned, which is compatible with corresponding model type
-    - `Tokenizer::tokenize(text, text_pair, padding, truncation) -> {input_ids, token_type_ids, attention_masks, label}`. Inspect input and output values to understand more
+    - `AutoTokenizer::from_pretrained() -> TokenizerBase`. Return a concrete tokenizer class.
+    - `Tokenizer::tokenize(text, text_pair, padding, truncation) -> {input_ids, token_type_ids, attention_masks, label}`
   - [AutoModel](https://github.com/huggingface/transformers/blob/4033ea7167c4a826f895830bac04c2561680572c/src/transformers/models/auto/modeling_auto.py#L1170)
     - Inspect `AutoModelForMultipleChoice(AutoModel)::_model_mapping` to understand model factory
-    - `AutoModelForMultipleChoice::from_pretrained()` to download and initialize model with concrete type (e.g. DebertaV2ForMultipleChoice)
-    - DebertaV2ForMultipleChoice::forward(input) -> output. It's very interesting to see all field names in input and output are literal strings (from a infra engineer perspective)
-    - `Input: dict<str, tensor>`: "Input_ids": [num_batch, num_choices, sequence_length], same for "token_type_ids" and "attention_mask"
-    - `Collator` is used to convert data layout from dataset input to model input, essentially, change the first dimension from num batch to feature names.
+    - `AutoModelForMultipleChoice::from_pretrained()` download model in concrete class type
+    - `DebertaV2ForMultipleChoice::forward()` inspect input and output data formats 
+    - `Collator`, essentially, changes the first dimension from num batch to feature names
   - [PreTrainedModel](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/models/deberta_v2/modeling_deberta_v2.py#L917)
     - Each concrete model (e.g. DebertaV2, bert, llama) derives from base class `PreTrainedModel`, with task based variants (e.g. DebertaV2ForMaskedLM, DebertaV2ForQuestionAnswering, DebertaV2ForMultipleChoice)
-    - A single .py file includes all implementation of a model, following [Repeat Yourself](https://discuss.huggingface.co/t/repeat-yourself-transformers-design-philosophy/16483) philosopy. Another very interesting thing (from a infra engineer perspective).
+    - A single .py file includes all implementation of a model, following [Repeat Yourself](https://discuss.huggingface.co/t/repeat-yourself-transformers-design-philosophy/16483) philosopy
   - [HuggingFace Trainer](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/trainer.py#L2968)
       - TODO, take a closer look to understand HF API design philosopy
-```mermaid
----
-title: Huggingface
----
-classDiagram
-    AutoModel --|> AutoModelForMultipleChoice
-    DebertaV2ForMultipleChoice --|> DebertaV2PreTrainedModel
-    DebertaV2PreTrainedModel --|> PreTrainedModel
-    DebertaV2ForMultipleChoice <.. AutoModelForMultipleChoice 
-    Trainer *-- Dataset
-    Trainer *-- GPT2TokenizerFast
-    GPT2TokenizerFast <.. AutoTokenizer 
-    GPT2TokenizerFast --|> PreTrainedTokenizerBase
-    Trainer *-- DebertaV2ForMultipleChoice
-
-
-    
-    class Dataset {
-        load_dataset()
-        index()
-        next()
-    }
-
-    class AutoTokenizer{
-        from_pretrained()
-    }
-
-    class PreTrainedTokenizerBase {
-        get_vocab()
-        tokenize()
-        encode()
-        decode()
-    }
-    class GPT2TokenizerFast {
-        get_vocab()
-        tokenize()
-        encode()
-        decode()
-    }
-
-
-    class AutoModel {
-        from_config()
-        from_pretrained()
-    }
-    class AutoModelForMultipleChoice {
-        -_model_mapping 
-        from_config()
-        from_pretrained()
-
-    }
-    class DebertaV2ForMultipleChoice {
-        forward() # multichoice head forward
-    }
-    class DebertaV2PreTrainedModel {
-        forward() # logits forward
-    }
-    class PreTrainedModel {
-        from_pretrained()
-        forward()
-    }
-    class Trainer {
-        collator
-        dataloader 
-        optimizer 
-        scheduler 
-        tokenizer
-        train()
-        predict()
-        evaluation()
-        add_callback()
-        create_optimizer()
-        create_scheduler()
-        get_dataloader()
-        save_model()
-    }
-
-
-    click Dataset href "https://github.com/huggingface/datasets/blob/ef17d9fd6c648bb41d43ba301c3de4d7b6f833d8/src/datasets/load.py#L1850"
-    click AutoTokenizer href "https://github.com/huggingface/transformers/blob/a6e6b1c622d8d08e2510a82cb6266d7b654f1cbf/src/transformers/models/auto/tokenization_auto.py#L533"
-    click GPT2TokenizerFast href "https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/tokenization_gpt2_fast.py#L70C7-L70C24"
-    click PreTrainedTokenizerBase href "https://github.com/huggingface/transformers/blob/a6e6b1c622d8d08e2510a82cb6266d7b654f1cbf/src/transformers/tokenization_utils_base.py"
-    click AutoModel href "https://github.com/huggingface/transformers/blob/a6e6b1c622d8d08e2510a82cb6266d7b654f1cbf/src/transformers/models/auto/modeling_auto.py#L1170"
-    click AutoModelForMultipleChoice href "https://github.com/huggingface/transformers/blob/a6e6b1c622d8d08e2510a82cb6266d7b654f1cbf/src/transformers/models/auto/modeling_auto.py#L1271"
-    click DebertaV2PreTrainedModel href "https://github.com/huggingface/transformers/blob/a6e6b1c622d8d08e2510a82cb6266d7b654f1cbf/src/transformers/models/deberta_v2/modeling_deberta_v2.py#L1554"
-    click DebertaV2ForMultipleChoice href "https://github.com/huggingface/transformers/blob/a6e6b1c622d8d08e2510a82cb6266d7b654f1cbf/src/transformers/models/deberta_v2/modeling_deberta_v2.py#L1554"
-    click PreTrainedModel href "https://github.com/huggingface/transformers/blob/a6e6b1c622d8d08e2510a82cb6266d7b654f1cbf/src/transformers/modeling_utils.py#L1028"
-    click Trainer href "https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/trainer.py#L225"
-```
 
 ## 2. Attention is all you need
 
@@ -175,46 +85,59 @@ Goal: Grasping the key concepts of Transformers through paper reading.
   - After reading this, you should have a high-level understanding of how the Transformer works. Don't worry if some details still seem confusing; they will become clearer as we proceed to write our own transformer model.
 - [Embedding and word2vec](https://arxiv.org/abs/1301.3781)
   - If the concept of embedding sounds unfamiliar to you, this paper is for you.
- 
-  - 
-
 
 #### Fun Questions
-- Does transformer incluse its own word embedding and trained together with attention layers? Or it takes embedding as input trained from somewhere else?
-  - The paper doesn't explicitly mention this detailed engineering question, but most Transformer implementations I've seen include their own word embeddings and train them along with attention layers.
 
-- The model architecture seems to work for language translation. But how does that work for tasks, e.g. multiple choice, question answering, text summarization, etc?
-  - The Transformer architecture alone isn't sufficient for these tasks; a task-specific head is added on top of the universal knowledge stored in the attention/transformer layers. This task head is responsible for producing task-specific outputs.
-  - For instance, check out the Huggingface Transformer implementation to understand this concept better. When we build our own model, we will also gain hands-on experience with the Language Model Head for text generation.
-  - How large is LLM? It seems attention layer is small. How can modern LLM models use tens of even hundreds of billions of parameters?
-  - Parameter here refers to learnable parameters, i.e. the weights defined in init() method in torch.nn.module. Major parameters include
-      - Attention QKV metrix: 3 * emb_dim * emb_dim
-      - Attention projection layer: emb_dim * emb_dim
-      - Feed forward: 4 * emb_dim * emb_dim + emb_dim * emb_dim
-      - Word embedding: emb_dim * vocab_size
-      - Position embedding: seq_len * emb_dim
-  - Note that, it seems LLM folks usually call emb_dim as model_dim.
-  - We also need to multiple the first 3 by the number of layers. Confirmed by a friend, who cannot reveal the actual number, this calculation is right and will get to hundreds of billions under production setup.
-- How can PyTorch autograd compute gradients for specific rows in an embedding table?
-  - Transformers (and other use cases) don't utilize the entire embedding table but only specific rows during each training batch. So the gradient and weights update should only happen to those rows
-  - TODO look into how does Pytorch implement such partial-tensor. I thought it's computed at tensor level.
-- In text generation (e.g. ChatGPT) how does transformer know when to stop generating new words?
-  - The Transformer generates words one at a time. Some APIs take "num_words_to_generate" as input for inference.
-  - My guess is, in the case of ChatGPT, where this input is not provided, a special token, like an "end of sentence" token, signals the model to stop generating new words.
-- What is an autoregressive language model?
-  - In statistics, an autoregressive model predicts a time series data point based on previous data points in the same series.
-  - In language models, "auto" refers to self, meaning the model uses its own output from previous predictions as input to generate the next word.
-  - "Regressive" indicates looking backward, as the model uses previous data points to predict the next data point (word).
-
-- What is Beam search in LLM/sampling?
-  - In Beam search, instead of always selecting the word with the highest probability, the model picks the top k words and generates k sequences in parallel.
-  - In the next step, k sub-sequences are generated for each sequence, resulting in k * k sequences in total.
-  - The model then applies pruning and keeps only the top-k quality sequences.
-  - This process is repeated until the desired length or condition is met.
-
-- What loss function does it use?
-  - Different tasks in Transformers use different loss functions.
-  - For language translation, it uses cross-entropy, treating it as a classification problem where the next word is the label, and the model output is the probability distribution over the vocabulary.
+<details><summary>Does transformer incluse own embedding and train together with attention layers?</summary>
+    <ul>
+<li> The paper doesn't explicitly mention this detailed engineering question, but most Transformer implementations I've seen include their own word embeddings and train them along with attention layers.</li>
+    </ul>
+</details>
 
 
+<details><summary> How does model work for tasks besides language translation e.g. multiple choice, question answering, text summarization, etc?</summary>
+    <ul>
+<li>The Transformer architecture alone isn't sufficient for these tasks; a task-specific head is added on top of the universal knowledge stored in the attention/transformer layers. This task head is responsible for producing task-specific outputs.</li>
+<li>For instance, check out the Huggingface Transformer implementation to understand this concept better. When we build our own model, we will also gain hands-on experience with the Language Model Head for text generation.</li>
+    </ul>
+</details>
 
+<details><summary>How can LLM be that large, e.g. 300B parameters?</summary>
+        <ul>
+<li>Parameter here refers to learnable parameters, i.e. the weights defined in init() method in torch.nn.module. Major parameters include</li>
+     <li> - Attention QKV metrix: 3 * emb_dim * emb_dim</li>
+     <li> - Attention projection layer: emb_dim * emb_dim</li>
+    <li>  - Feed forward: 4 * emb_dim * emb_dim + emb_dim * emb_dim</li>
+    <li>  - Word embedding: emb_dim * vocab_size</li>
+     <li> - Position embedding: seq_len * emb_dim</li>
+<li>Note that, it seems LLM folks usually call emb_dim as model_dim.</li>
+<li>We also need to multiple the first 3 by the number of layers. Confirmed by a friend, who cannot reveal the actual number, this calculation is right and will get to hundreds of billions under production setup.</li>
+            </ul></details>
+
+<details><summary>How does PyTorch autograd compute gradients for individual rows in an embedding table?</summary><ul>
+<li>Transformers (and other use cases) don't utilize the entire embedding table but only specific rows during each training batch. So the gradient and weights update should only happen to those rows</li>
+<li>TODO look into how does Pytorch implement such partial-tensor. I thought it's computed at tensor level.</li>
+</ul></details>
+
+<details><summary>In text generation (e.g. ChatGPT) how does transformer know when to stop generating new words?</summary><ul>
+<li>The Transformer generates words one at a time. Some APIs take "num_words_to_generate" as input for inference.</li>
+<li>My guess is, in the case of ChatGPT, where this input is not provided, a special token, like an "end of sentence" token, signals the model to stop generating new words.</li>
+</ul></details>
+
+<details><summary>What is an autoregressive language model?</summary><ul>
+<li>In statistics, an autoregressive model predicts a time series data point based on previous data points in the same series.</li>
+<li>In language models, "auto" refers to self, meaning the model uses its own output from previous predictions as input to generate the next word.</li>
+<li>"Regressive" indicates looking backward, as the model uses previous data points to predict the next data point (word).</li>
+</ul></details>
+
+<details><summary>What is Beam search in LLM/sampling?</summary><ul>
+<li>In Beam search, instead of always selecting the word with the highest probability, the model picks the top k words and generates k sequences in parallel.</li>
+<li>In the next step, k sub-sequences are generated for each sequence, resulting in k * k sequences in total.</li>
+<li>The model then applies pruning and keeps only the top-k quality sequences.</li>
+<li>This process is repeated until the desired length or condition is met.</li>
+</ul></details>
+
+<details><summary>What loss function does it use?</summary><ul>
+<li>Different tasks in Transformers use different loss functions.</li>
+<li>For language translation, it uses cross-entropy, treating it as a classification problem where the next word is the label, and the model output is the probability distribution over the vocabulary.</li>
+</ul></details>
