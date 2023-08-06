@@ -23,7 +23,7 @@ flowchart TB;
     D -. know landscpe .-> E
     E -. iterate on .-> A
 ```
-## 0.Prior Knowledge
+## 0. Prior Knowledge
 
 You probably don't need to read all of them, but those are the things I knew before this learning journey.
 - [Neural Network and Deep Learning by Andrew Ng](https://www.coursera.org/learn/neural-networks-deep-learning)
@@ -39,7 +39,7 @@ Goal: Applying before comprehending. Train and infer with a Huggingface Transfor
 
 Learning for learning's sake is tedious. Competing in [LLM Science Exam](https://www.kaggle.com/competitions/kaggle-llm-science-exam) is exhilarating. Minimal prior knowledge needed. Build and train your first transformer model now! Gain a fresh experience, and obviously a low rank on leaderboard. Then, formulate questions, explore knowledges, and elavate our rank!
 
-[llm-notebook](https://github.com/fmars/n00bGPT/blob/main/llm-science-exam-s1.ipynb) is our first trial. The score wasn't high but that's ok.
+[llm-notebook](https://github.com/fmars/n00bGPT/blob/main/colab/llm-science-exam-s1.ipynb) is our first trial. The score wasn't high but that's ok.
 
 Checkout class diagram of [huggingface major abstractions](https://github.com/fmars/n00bGPT/blob/main/huggingface_class_diagram.md).
 - [HuggingFace Datasets](https://huggingface.co/docs/datasets/index) 
