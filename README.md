@@ -4,7 +4,7 @@ Build GPT model from scratch. Learn perf optimiation and practice in the competi
 
 1. **Kaggle competition**: fresh touch on LLM with Huggingface Transformer fine tune
 2. **Attention is all you need**: understand how does transformer work
-3. **NanoGPT**: write your own Transformer model from scratch
+3. **N00bGPT**: write your own Transformer model from scratch
 4. **Transformer variants**: understand the landscope of transformers
 5. **Performance**: study scalability w/ FSDP, GSPMD, JAX, etc
 
