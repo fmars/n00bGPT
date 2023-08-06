@@ -1,14 +1,12 @@
 # n00bGPT (WIP)
 
-
-
-This is my 3-weeks learning jounery of Transformer and LLM. It's challenging. Because I initially knew nothing about it. However, it's exhilarating and rewarding. I like learning by doing. You guess right. We named it n00bGPT since we built our own transformer. I hope this note help yours!
+Build GPT model from scratch. Learn perf optimiation and practice in the competition. How exhilarating and rewarding. It's named N00bGPT because I barely know nothing about LLM and wanted to how much I can get in 3 weeks. This is my jounery.
 
 1. **Kaggle competition**: fresh touch on LLM with Huggingface Transformer fine tune
 2. **Attention is all you need**: understand how does transformer work
-3. **NanoGPT**: a codelab to build your own Transformer model from scratch
-4. **Transformer variant**: understand the landscope of transformers
-5. **Training Infra**: study scalability by FSDP, GSPMD, JAX, etc
+3. **NanoGPT**: write your own Transformer model from scratch
+4. **Transformer variants**: understand the landscope of transformers
+5. **Performance**: study scalability w/ FSDP, GSPMD, JAX, etc
 
 ```mermaid
 %%{ "width": 200, "height": 100 }%%
@@ -18,7 +16,7 @@ flowchart TB;
     B([Attention is all you need])
     C([NoobGPT])
     D([Transformer Variants])
-    E([Training Infra])
+    E([Performance])
     A -. first touch .-> B
     B -. learn concepts .-> C
     C -. hands dirty .->  D
