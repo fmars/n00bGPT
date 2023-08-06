@@ -1,5 +1,7 @@
 # n00bGPT (WIP)
 
+
+
 This is my 3-weeks learning jounery of Transformer and LLM. It's challenging. Because I initially knew nothing about it. However, it's exhilarating and rewarding. I like learning by doing. You guess right. We named it n00bGPT since we built our own transformer. I hope this note help yours!
 
 1. **Kaggle competition**: fresh touch on LLM with Huggingface Transformer fine tune
@@ -9,6 +11,8 @@ This is my 3-weeks learning jounery of Transformer and LLM. It's challenging. Be
 5. **Training Infra**: study scalability by FSDP, GSPMD, JAX, etc
 
 ```mermaid
+%%{ "width": 200, "height": 100 }%%
+
 flowchart TB;
     A([Kaggle Competition])
     B([Attention is all you need])
@@ -38,8 +42,30 @@ Goal: Applying before comprehending. Train and infer with a Huggingface Transfor
 Learning for learning's sake is tedious. Competing in [LLM Science Exam](https://www.kaggle.com/competitions/kaggle-llm-science-exam) is exhilarating. Minimal prior knowledge needed. Build and train your first transformer model now! Gain a fresh experience, and obviously a low rank on leaderboard. Then, formulate questions, explore knowledges, and elavate our rank!
 
 [llm-notebook](https://github.com/fmars/n00bGPT/blob/main/llm-science-exam-s1.ipynb) is our first trial. The score wasn't high but that's ok.
-```mermaid
 
+
+- [HuggingFace Datasets](https://huggingface.co/docs/datasets/index) 
+  - The library to access and process the data, in a very easy way!
+  - `Dataset::load_dataset()`, with split, config
+  - `Dataset::index()` and `slicing()`, `IterableDataset::iter()` and `next()`
+  - `Dataset::map()` to preprocess
+- [HuggingFace Transformers](https://huggingface.co/docs/transformers/index)
+  - The library to download, fine-tune and inference the pretrained models, in a even easier way!
+  - [AutoTokenizer](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/tokenization_utils_base.py#L1494)
+    - `AutoTokenizer::from_pretrained() -> TokenizerBase`. A concrete derived class will be returned, which is compatible with corresponding model type
+    - `Tokenizer::tokenize(text, text_pair, padding, truncation) -> {input_ids, token_type_ids, attention_masks, label}`. Inspect input and output values to understand more
+  - [AutoModel](https://github.com/huggingface/transformers/blob/4033ea7167c4a826f895830bac04c2561680572c/src/transformers/models/auto/modeling_auto.py#L1170)
+    - Inspect `AutoModelForMultipleChoice(AutoModel)::_model_mapping` to understand model factory
+    - `AutoModelForMultipleChoice::from_pretrained()` to download and initialize model with concrete type (e.g. DebertaV2ForMultipleChoice)
+    - DebertaV2ForMultipleChoice::forward(input) -> output. It's very interesting to see all field names in input and output are literal strings (from a infra engineer perspective)
+    - `Input: dict<str, tensor>`: "Input_ids": [num_batch, num_choices, sequence_length], same for "token_type_ids" and "attention_mask"
+    - `Collator` is used to convert data layout from dataset input to model input, essentially, change the first dimension from num batch to feature names.
+  - [PreTrainedModel](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/models/deberta_v2/modeling_deberta_v2.py#L917)
+    - Each concrete model (e.g. DebertaV2, bert, llama) derives from base class `PreTrainedModel`, with task based variants (e.g. DebertaV2ForMaskedLM, DebertaV2ForQuestionAnswering, DebertaV2ForMultipleChoice)
+    - A single .py file includes all implementation of a model, following [Repeat Yourself](https://discuss.huggingface.co/t/repeat-yourself-transformers-design-philosophy/16483) philosopy. Another very interesting thing (from a infra engineer perspective).
+  - [HuggingFace Trainer](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/trainer.py#L2968)
+      - TODO, take a closer look to understand HF API design philosopy
+```mermaid
 ---
 title: Huggingface
 ---
@@ -129,33 +155,16 @@ classDiagram
     click Trainer href "https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/trainer.py#L225"
 ```
 
-- [HuggingFace Datasets](https://huggingface.co/docs/datasets/index) 
-  - The library to access and process the data, in a very easy way!
-  - `Dataset::load_dataset()`, with split, config
-  - `Dataset::index()` and `slicing()`, `IterableDataset::iter()` and `next()`
-  - `Dataset::map()` to preprocess
-- [HuggingFace Transformers](https://huggingface.co/docs/transformers/index)
-  - The library to download, fine-tune and inference the pretrained models, in a even easier way!
-  - [AutoTokenizer](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/tokenization_utils_base.py#L1494)
-    - `AutoTokenizer::from_pretrained() -> TokenizerBase`. A concrete derived class will be returned, which is compatible with corresponding model type
-    - `Tokenizer::tokenize(text, text_pair, padding, truncation) -> {input_ids, token_type_ids, attention_masks, label}`. Inspect input and output values to understand more
-  - [AutoModel](https://github.com/huggingface/transformers/blob/4033ea7167c4a826f895830bac04c2561680572c/src/transformers/models/auto/modeling_auto.py#L1170)
-    - Inspect `AutoModelForMultipleChoice(AutoModel)::_model_mapping` to understand model factory
-    - `AutoModelForMultipleChoice::from_pretrained()` to download and initialize model with concrete type (e.g. DebertaV2ForMultipleChoice)
-    - DebertaV2ForMultipleChoice::forward(input) -> output. It's very interesting to see all field names in input and output are literal strings (from a infra engineer perspective)
-    - `Input: dict<str, tensor>`: "Input_ids": [num_batch, num_choices, sequence_length], same for "token_type_ids" and "attention_mask"
-    - `Collator` is used to convert data layout from dataset input to model input, essentially, change the first dimension from num batch to feature names.
-  - [PreTrainedModel](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/models/deberta_v2/modeling_deberta_v2.py#L917)
-    - Each concrete model (e.g. DebertaV2, bert, llama) derives from base class `PreTrainedModel`, with task based variants (e.g. DebertaV2ForMaskedLM, DebertaV2ForQuestionAnswering, DebertaV2ForMultipleChoice)
-    - A single .py file includes all implementation of a model, following [Repeat Yourself](https://discuss.huggingface.co/t/repeat-yourself-transformers-design-philosophy/16483) philosopy. Another very interesting thing (from a infra engineer perspective).
-  - [HuggingFace Trainer](https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/trainer.py#L2968)
-      - TODO, take a closer look to understand HF API design philosopy
-  
-
-### 1. Attention is all you need
+## 2. Attention is all you need
 
 Goal: Grasping the key concepts of Transformers through paper reading.
 
+<p align="center">
+    <img title="ABC" src="https://github.com/fmars/n00bGPT/blob/main/images/aiayn.png" title="asdfasdf asdf" width="300" height="390">
+    <em> From “Attention is all you need” paper by Vaswani, et al., 2017 </em>
+</p>
+
+        
 #### Reading list
 - [Atention is all you need](https://arxiv.org/abs/1706.03762)
   - Start by reading the original paper. Gather initial insights, even if you don't fully comprehend its inner working. That's fine. I didn't either. Below blogs offer intuitive explanations.
@@ -166,6 +175,9 @@ Goal: Grasping the key concepts of Transformers through paper reading.
   - After reading this, you should have a high-level understanding of how the Transformer works. Don't worry if some details still seem confusing; they will become clearer as we proceed to write our own transformer model.
 - [Embedding and word2vec](https://arxiv.org/abs/1301.3781)
   - If the concept of embedding sounds unfamiliar to you, this paper is for you.
+ 
+  - 
+
 
 #### Fun Questions
 - Does transformer incluse its own word embedding and trained together with attention layers? Or it takes embedding as input trained from somewhere else?
