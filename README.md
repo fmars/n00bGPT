@@ -112,12 +112,12 @@ Goal: Grasping the key concepts of Transformers through paper reading.
 <li>We also need to multiple the first 3 by the number of layers. Confirmed by a friend, who cannot reveal the actual number, this calculation is right and will get to hundreds of billions under production setup.</li>
             </ul></details>
 
-<details><summary>How does PyTorch autograd compute gradients for individual rows in an embedding table?</summary><ul>
+<details><summary><b>TODO How does PyTorch autograd compute gradients for individual rows in an embedding table?</b></summary><ul>
 <li>Transformers (and other use cases) don't utilize the entire embedding table but only specific rows during each training batch. So the gradient and weights update should only happen to those rows</li>
 <li><p style="color:red;">TODO look into how does Pytorch implement such partial-tensor. I thought it's computed at tensor level.</p></li>
 </ul></details>
 
-<details><summary>In text generation (e.g. ChatGPT) how does transformer know when to stop generating new words?</summary><ul>
+<details><summary><b>TODO In text generation (e.g. ChatGPT) how does transformer know when to stop generating new words?</b></summary><ul>
 <li>The Transformer generates words one at a time. Some APIs take "num_words_to_generate" as input for inference.</li>
 <li>My guess is, in the case of ChatGPT, where this input is not provided, a special token, like an "end of sentence" token, signals the model to stop generating new words.</li>
 </ul></details>
