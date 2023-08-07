@@ -139,3 +139,32 @@ Goal: Grasping the key concepts of Transformers through paper reading.
 <li>Different tasks in Transformers use different loss functions.</li>
 <li>For language translation, it uses cross-entropy, treating it as a classification problem where the next word is the label, and the model output is the probability distribution over the vocabulary.</li>
 </ul></details>
+
+
+## 3. N00bGPT
+Now, it's time to get hands dirty. Let's first build a word2vec to train our word embedding, and then build our simple gpt model.
+
+<p align="center">
+    <img title="Hands-on Transformer" src="https://github.com/fmars/n00bGPT/blob/main/images/build_transformer.jpg" title="" width="300" height="390">
+</p>
+
+### Dev environment - Colab
+If don't have a dev environment set up yet, I strongly recommand to start with [Colab](https://colab.research.google.com/), easy to run, easy to manage dependency, easy to inspect result, easy to switch between hardwards, etc. In short, it's so easy (of course for learning use cases)! Not sure what happened to others but I still remember the afeternoon when I was trying to install cuda driver for my windows desktop, and eventually gave up after hours trying but still got torch.cuda.is_available==False. :(
+
+ 
+### Dev environment - GCP VM
+
+I figured GCP (Google Cloud Platform) is an alternative. It feels more of a serious, hmm, at least you get the control of (kind of) a real machine, which is technically speaking a VM though. Don't forget to install dependencies. 
+```
+pip3 install torch
+pip3 install transformers
+pip3 install datasets
+pip3 install tensorflow
+```
+(If `pip3 install torch` failed with an error like ` 619.9 MB 2.6 MB/s eta 0:00:01Killed`, congrats, we're all frugal people and only applied a small vm. This is due to out of ram. Run instead `pip3 install torch --no-cache-dir`).
+
+Find all of the colab/notebooks under [n00bGPT/colab/](https://github.com/fmars/n00bGPT/tree/main/colab), and plain python code under [n00bGPT/src](https://github.com/fmars/n00bGPT/tree/main/src)
+
+
+### Word2vec
+Ever wonder how is word embedding generated? Word2vec is the algorithm for it. Read the original paper [Efficient Estimation of Word Representations in Vector Space](https://arxiv.org/pdf/1301.3781.pdf) to understand how do CBOW (continuous bag-of-words) and Skip-Gram work. This is a pytorch version re-write of [tensorflow word2vec](https://www.tensorflow.org/text/tutorials/word2vec). The implementation is quite straightforward but helps a lot on getting familar with concepts in a training program.
