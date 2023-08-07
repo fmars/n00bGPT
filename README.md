@@ -167,4 +167,8 @@ Find all of the colab/notebooks under [n00bGPT/colab/](https://github.com/fmars/
 
 
 ### Word2vec
-Ever wonder how is word embedding generated? Word2vec is the algorithm for it. Read the original paper [Efficient Estimation of Word Representations in Vector Space](https://arxiv.org/pdf/1301.3781.pdf) to understand how do CBOW (continuous bag-of-words) and Skip-Gram work. This is a pytorch version re-write of [tensorflow word2vec](https://www.tensorflow.org/text/tutorials/word2vec). The implementation is quite straightforward but helps a lot on getting familar with concepts in a training program.
+Ever wonder how is word embedding generated? Word2vec is the algorithm for it. Read the original paper [Efficient Estimation of Word Representations in Vector Space](https://arxiv.org/pdf/1301.3781.pdf) to understand how do CBOW (continuous bag-of-words) and Skip-Gram work. This is a pytorch version re-write of [tensorflow word2vec](https://www.tensorflow.org/text/tutorials/word2vec). The implementation is quite straightforward. It contains major pieces of a training program.
+
+Let's look into our [word2vec](https://github.com/fmars/n00bGPT/blob/main/colab/word2vec_skip_gram.ipynb):
+
+
