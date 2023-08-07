@@ -103,18 +103,18 @@ Goal: Grasping the key concepts of Transformers through paper reading.
 <details><summary>How can LLM be that large, e.g. 300B parameters?</summary>
         <ul>
 <li>Parameter here refers to learnable parameters, i.e. the weights defined in init() method in torch.nn.module. Major parameters include</li>
-     <li> - Attention QKV metrix: 3 * emb_dim * emb_dim</li>
-     <li> - Attention projection layer: emb_dim * emb_dim</li>
-    <li>  - Feed forward: 4 * emb_dim * emb_dim + emb_dim * emb_dim</li>
-    <li>  - Word embedding: emb_dim * vocab_size</li>
-     <li> - Position embedding: seq_len * emb_dim</li>
+     <li> Attention QKV metrix: 3 * emb_dim * emb_dim</li>
+     <li> Attention projection layer: emb_dim * emb_dim</li>
+    <li>  Feed forward: 4 * emb_dim * emb_dim + emb_dim * emb_dim</li>
+    <li>  Word embedding: emb_dim * vocab_size</li>
+     <li> Position embedding: seq_len * emb_dim</li>
 <li>Note that, it seems LLM folks usually call emb_dim as model_dim.</li>
 <li>We also need to multiple the first 3 by the number of layers. Confirmed by a friend, who cannot reveal the actual number, this calculation is right and will get to hundreds of billions under production setup.</li>
             </ul></details>
 
 <details><summary>How does PyTorch autograd compute gradients for individual rows in an embedding table?</summary><ul>
 <li>Transformers (and other use cases) don't utilize the entire embedding table but only specific rows during each training batch. So the gradient and weights update should only happen to those rows</li>
-<li>TODO look into how does Pytorch implement such partial-tensor. I thought it's computed at tensor level.</li>
+<li><p style="color:red;">TODO look into how does Pytorch implement such partial-tensor. I thought it's computed at tensor level.</p></li>
 </ul></details>
 
 <details><summary>In text generation (e.g. ChatGPT) how does transformer know when to stop generating new words?</summary><ul>
