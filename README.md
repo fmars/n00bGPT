@@ -183,3 +183,88 @@ Let's look into the code [word2vec](https://github.com/fmars/n00bGPT/blob/main/c
 Our poorman's word2vec seems working well. The loss curve converges in a descent way. However, if you try the classic test, king-man+woman actually works very poorly (which is kind of expected otherwise why they needs hundreds or thunsands gpus to cotrain :)
 
 Now, a fun quiz: write your embedding to load from pre-trained LLM model, and predict what does king-man+woman result. Give it a try before looking into [this](https://github.com/fmars/n00bGPT/blob/main/src/emb_from_pretrained.py).
+
+
+## N00bGPT
+
+<p align="center">
+    <img title="weights mapping" src="https://github.com/fmars/n00bGPT/blob/main/images/chat.png" title="" width="1000" height="200">
+</p>
+
+[mode.py](https://github.com/fmars/n00bGPT/blob/main/src/model.py) and [chat.py](https://github.com/fmars/n00bGPT/blob/main/src/chat.py) is our own version of Transformer implementation from scratch, including 
+- softmax()
+- scaled_dot_product_attention()
+- MultiheadAttention
+- GPTModel
+- GPTLMHeadModel
+ 
+
+
+We load weights from Huggingface pretrained GPT-2, and run text generation. I found it’s not hard to write the initial version, however the generated text doesn’t make sense at all. The challenging part is to make our model correct. First time debugging the numerical issue. I found  it really fun, and of course time consuming :)
+
+**Step 1: How does Huggingface GPT work**
+
+Let’s first look into what happens step by step when we run 
+```
+from transformers import pipeline
+generator = pipeline('text-generation', model='gpt2')
+input = ‘i am a software engineer and i like to'
+generator("input, max_length=30, num_return_sequences=5)
+```
+
+1. A [TextGenerationPipeline](https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/text_generation.py#L24C7-L24C29
+) is created Which is a derived class of [Pipeline](https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/base.py#L1066)
+2. [call](https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/base.py#L1129) method of Pipeline essentially calls derived preprocess(), forward(), postprocess()
+3. [TextGenerationPipeline::_forward()](https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/text_generation.py#L265 )  calls model.generate(), where model is [GPT2LMHeadModel](https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py#L955)
+4. PretrainedModel derives from GenerationMixin, which defines [generate() method](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L1249)
+5. generate() method first generates [genearation_config](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L1633 ), which has a field called generation_mode, which is sample in our case 
+6. [sample() method](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L2740) set up some configs, then runs into a while true loop, to generate token one at a time, and stops when stop criterion meets
+7. sample() method calls actual model (GPT2LMHeadMode), which has LM head as a MLP, and invokes [forward() method](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L2755)
+8. GPT2LMHHeadModel’s forward contains a [LM head](https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py#L1098 ) on top of basic transformer
+
+
+**Step 2: Fun questions**
+
+- How does stop criterion work?
+    - Generates a [stop criteria list](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L1014), which includes a default list, stop based on max length, and max time 
+    - It seems huggingface currently only uses the most [basic criterions](https://github.com/huggingface/transformers/blob/main/src/transformers/generation/stopping_criteria.py#L36 ) (hmm thought some smart solution is used)
+- How does sample actually work
+    - Sample picks the next token based on multinomial distribution over all possible tokens, which provides some randomness, whereas higher probability token has higher probability to be picked 
+    - It generates one token at a time, through step above, and repeats until stop criterion satisfied
+    - Other generation mode exist, e.g. beam search, greedy search, etc
+- What’s the input and output format of base model
+    - Output is [BaseModelOutputWithPastAndCrossAttentions](https://github.com/huggingface/transformers/blob/main/src/transformers/modeling_outputs.py#L245 )
+- What’s the input and output format of LMHead model
+    - Output is [CausalLMOutputWithCrossAttentions ](https://github.com/huggingface/transformers/blob/main/src/transformers/modeling_outputs.py#L623 )
+
+**Step 3: Inspect and verify each module/method**
+
+1. GPT2Attention <> MultiheadAttention
+2. GPT2MLP <> FeedForward
+3. GPT2Block <> Layer
+4. GPT2Model <> GPTLMHeadModel
+
+Also inspect the correctness of weights mapping.
+ <p align="left">
+    <img title="weights mapping" src="https://github.com/fmars/n00bGPT/blob/main/images/weights_mapping.png" title="" width="1500" height="500">
+</p>
+
+[Parity debugging](https://github.com/fmars/n00bGPT/blob/main/colab/model_parity_debugging.ipynb) are unit tests that we compare Huggingface and our version layer by layer. Below are bugs found in the initial implementation 
+- MultiheadAttention
+    - Huggingface uses dropout in both attention and residual network
+    - (Actually this should have no effect since dropout is disabled automatically in eval mode)
+    - Forgot to implement the attention mask as we’re computing causal attention. Technically it shouldn’t affect final output (i.e. generated text), it affects logits of intermediate hidden state
+        - In torch.nn.functional.scaled_dot_product(), it’s is_causal=True parameter
+    - In the attention layer, both 'in_proj_weight', 'out_proj.weight' require transpose from pretrained weights
+- MLP <> FeedForward
+    - torch gelu runs different than GPT2 gelu_new, though their documentation states the same 
+- Block <> Layer
+    - When adding residual to the attention output, residual should equal to original input (i.e. hidden state) rather than linear norm output 
+
+
+After fixing all of those bugs, our n00bGPT works and finally generates some reasonable text!
+
+ 
+
+
+
