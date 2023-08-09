@@ -167,8 +167,19 @@ Find all of the colab/notebooks under [n00bGPT/colab/](https://github.com/fmars/
 
 
 ### Word2vec
-Ever wonder how is word embedding generated? Word2vec is the algorithm for it. Read the original paper [Efficient Estimation of Word Representations in Vector Space](https://arxiv.org/pdf/1301.3781.pdf) to understand how do CBOW (continuous bag-of-words) and Skip-Gram work. This is a pytorch version re-write of [tensorflow word2vec](https://www.tensorflow.org/text/tutorials/word2vec). The implementation is quite straightforward. It contains major pieces of a training program.
+Ever wonder how is word embedding generated? Word2vec is the algorithm for it. Read the original paper [Efficient Estimation of Word Representations in Vector Space](https://arxiv.org/pdf/1301.3781.pdf) to understand how do CBOW (continuous bag-of-words) and Skip-Gram work. This is a [pytorch version word2vec](https://github.com/fmars/n00bGPT/blob/main/colab/word2vec_skip_gram.ipynb) to re-write [tensorflow version](https://www.tensorflow.org/text/tutorials/word2vec). The implementation is quite straightforward. It contains major pieces of a training program.
 
-Let's look into our [word2vec](https://github.com/fmars/n00bGPT/blob/main/colab/word2vec_skip_gram.ipynb):
+Let's look into the code [word2vec](https://github.com/fmars/n00bGPT/blob/main/colab/word2vec_skip_gram.ipynb):
+- [Dataset](https://github.com/fmars/n00bGPT/blob/main/src/word2vec.py#L20): poor man's version of tokenizer with encode and decode, iteratable interface, and also a collator
+- [Skip-Gram model](https://github.com/fmars/n00bGPT/blob/main/src/word2vec.py#L127): use dot-product to measure similarity(distance) and use CrossEntropy to measure loss
+- [Trainer](https://github.com/fmars/n00bGPT/blob/main/src/word2vec.py#L155): poor man's trainer, with minibatch multi-epoch training, a cool progress bar, and also tensorboard logging
+- [Optimizer](https://github.com/fmars/n00bGPT/blob/main/src/word2vec.py#L153): understand SGD, momentum, adagrad, and adam. Searching around I found [this blog](https://www.analyticsvidhya.com/blog/2021/10/a-comprehensive-guide-on-deep-learning-optimizers/) gives quite a good explanation of intuition. Though I figurted ChatGPT gives me the best explanation of how exactly does each of them work.
 
+ <p align="left">
+    <img title="word2vec tensorboard" src="https://github.com/fmars/n00bGPT/blob/main/images/word2vec%20_tb.png" title="" width="450" height="150">
+</p>
 
+### King-Man+Woman=Queen?
+Our poorman's word2vec seems working well. The loss curve converges in a descent way. However, if you try the classic test, king-man+woman actually works very poorly (which is kind of expected otherwise why they needs hundreds or thunsands gpus to cotrain :)
+
+Now, a fun quiz: write your embedding to load from pre-trained LLM model, and predict what does king-man+woman result. Give it a try before looking into [this](https://github.com/fmars/n00bGPT/blob/main/src/emb_from_pretrained.py).
