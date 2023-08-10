@@ -264,7 +264,18 @@ Also inspect the correctness of weights mapping.
 
 After fixing all of those bugs, our n00bGPT works and finally generates some reasonable text!
 
- 
+
+## 4. Transformer Variants
+- [Transformer model family](https://huggingface.co/docs/transformers/model_summary) gives a good summary
+- [LLAMA2](https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/), Meta's 7B,14B,70B model with 4k sequence length
+- [DeBARTa](https://huggingface.co/docs/transformers/v4.31.0/en/model_doc/deberta#overview) Microsoft optimized transformer arch
+- [BERT](https://huggingface.co/docs/transformers/v4.31.0/en/model_doc/bert#overview ), L: 12, H:1024, A:16. Parameters: 340M
+- [PALM2](https://arxiv.org/abs/2305.10403) Google's latest pretrained model
+- [BigBird](https://huggingface.co/docs/transformers/model_doc/big_bird), a sparse attention mechanism that reduces quadratic dependency on the sequence length to linear.
+- [Fast transformer](https://arxiv.org/abs/1911.02150), optimized attention algorithm to reduce memory pressure on inference
+
+
+
 
 
 
