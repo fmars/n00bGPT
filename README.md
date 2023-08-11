@@ -275,6 +275,89 @@ After fixing all of those bugs, our n00bGPT works and finally generates some rea
 - [Fast transformer](https://arxiv.org/abs/1911.02150), optimized attention algorithm to reduce memory pressure on inference
 
 
+## 5. Performance
+
+#### Single card GPU
+Follow [single gpu perf opt](https://huggingface.co/docs/transformers/perf_train_gpu_one) to try out basics techniques. We’ll use our transformer model to measure training QPS, and see [notebook](https://github.com/fmars/n00bGPT/blob/main/colab/single_card_perf_opt.ipynb) for details. Baseline setting is
+```
+batch_size=36
+seq_len=128
+emb_dim=768
+vocab_size=50257
+n_layer=12
+optimizer=adam
+```
+| Desc        | Change       | QPS@T4     |  QPS@V100 |
+| :---        |    :----:   |    :----:   |      ---: |
+| Baseline      |        |  30 | 108 |
+|Torch Dynamo + Inductor | `opt_model = torch.compile(model, backend="inductor")` | 30 | 117 |
+| | batch_size=48 | | 117 |
+| | batch_size=16 | | 107 |
+| Quantization: DMP fp16 | `with torch.cuda.amp.autocast()` | 115 | 344 |
+| Tensor Core with TF32 | `torch.backends.cuda.matmul.allow_tf32 = True` | | 340 | 
+| HG accelerator | `m,opt = accelerator.prepare(m,opt)` | | 115 |
+
+
+#### GPU Memory
+For our transformer, number of parameter is 
+- Embedding table: vocab_size * emb_dim * 2
+- Attention: n_layer * (emb_dim ^ 2) * 9 # mh attention + feed forward
+- LM head: emb_dim * vocab_size
+
+Model weights = num_parameters * 4 
+Optimizer state = num_parameters * 8 (adam for momentum)
+Gradient = num_parameters * 4
+
+[Notebook](https://github.com/fmars/n00bGPT/blob/main/colab/mem_usage.ipynb). Follow simple example program, inspect reserved and allocated memory during training. 
+```python
+class Model(torch.nn.Module):
+  def __init__(self):
+    super().__init__()
+    self.a = torch.nn.Parameter(torch.randn(1024*1024*1024//4).to(dev))
+    self.b = torch.nn.Parameter(torch.randn(1024*1024*1024//4).to(dev))
+
+  def forward(self):
+    c = self.a + self.b
+    d = self.a - self.b
+    e = self.a * self.b
+    f = c + d
+    return f
+
+m = Model()
+opt = torch.optim.Adam(m.parameters())
+for i in range(5)
+  preds = m()
+  loss = torch.mean(preds)
+  loss.backward()
+  opt.step()
+  opt.zero_grad()
+
+before creating model    : GPU memory (Torch) total: 14.7, reserved: 0.0, allocated: 0.0, free: 14.7
+after creating model     : GPU memory (Torch) total: 14.7, reserved: 2.0, allocated: 2.0, free: 12.7
+after creating opt       : GPU memory (Torch) total: 14.7, reserved: 2.0, allocated: 2.0, free: 12.7
+iteration 0
+inside foward 1          : GPU memory (Torch) total: 14.7, reserved: 3.0, allocated: 3.0, free: 11.7
+inside foward 2          : GPU memory (Torch) total: 14.7, reserved: 4.0, allocated: 4.0, free: 10.7
+inside foward 3          : GPU memory (Torch) total: 14.7, reserved: 5.0, allocated: 5.0, free: 9.7
+inside foward4           : GPU memory (Torch) total: 14.7, reserved: 6.0, allocated: 6.0, free: 8.7
+after forward            : GPU memory (Torch) total: 14.7, reserved: 6.0, allocated: 3.0, free: 11.7
+after loss               : GPU memory (Torch) total: 14.7, reserved: 6.0, allocated: 3.0, free: 11.7
+after loss.backward      : GPU memory (Torch) total: 14.7, reserved: 6.0, allocated: 5.0, free: 9.7
+after opt.step           : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 9.0, free: 5.7
+after opt.zero_grad      : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 7.0, free: 7.7
+iteration 1
+inside foward 1          : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 8.0, free: 6.7
+inside foward 2          : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 9.0, free: 5.7
+inside foward 3          : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 10.0, free: 4.7
+inside foward4           : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 11.0, free: 3.7
+after forward            : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 8.0, free: 6.7
+after loss               : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 8.0, free: 6.7
+after loss.backward      : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 10.0, free: 4.7
+after opt.step           : GPU memory (Torch) total: 14.7, reserved: 14.0, allocated: 10.0, free: 4.7
+after opt.zero_grad      : GPU memory (Torch) total: 14.7, reserved: 14.0, allocated: 8.0, free: 6.7
+```
+
+
 
 
 
