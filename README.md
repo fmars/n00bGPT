@@ -1,4 +1,4 @@
-# n00bGPT (WIP)
+# n00bGPT
 
 Build GPT model from scratch. Learn perf optimiation and practice in the competition. How exhilarating and rewarding. It's named N00bGPT because I barely know nothing about LLM and wanted to how much I can get in 3 weeks. This is my jounery.
 
@@ -357,6 +357,40 @@ after opt.step           : GPU memory (Torch) total: 14.7, reserved: 14.0, alloc
 after opt.zero_grad      : GPU memory (Torch) total: 14.7, reserved: 14.0, allocated: 8.0, free: 6.7
 ```
 
+#### WIP
+Pt2.0, dynamo + inductor
+JIT + JAX + XLA
+Single card perf tuning 
+https://huggingface.co/docs/transformers/perf_train_gpu_one 
+Distributed training
+Launcher
+Orchestrator 
+Parallelism & Sharding: FSDP & PJIT 
+FSDP 
+https://engineering.fb.com/2021/07/15/open-source/fsdp/ 
+GSPMD & gshard
+
+
+PJIT
+https://irhum.github.io/blog/pjit/ 
+https://jax.readthedocs.io/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html 
+Efficient scaling transformer inference 
+https://arxiv.org/pdf/2211.05102.pdf 
+JAX (model training framework on top of python/numpy, comparable to tensorflow and pytorch)
+https://github.com/google/jax 
+https://jax.readthedocs.io/en/latest/index.html 
+Paxml (Pax) is a ML framework on top of JAX, designed specific for large LLM, comparable to MVAI
+https://github.com/google/paxml 
+Praxis: a layer library on top of Pax
+https://github.com/google/praxis 
+
+
+Questions
+What does JIT mean in details?
+MOE and gating network
+What is JAX and how is it different from Tensorflow?
+What does AutoGrad mean and how is it different from Pytorch’s?
+How does JAX achieve auto parallelism?
 
 
 
