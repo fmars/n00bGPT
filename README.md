@@ -1,4 +1,4 @@
-# n00bGPT (WIP)
+# n00bGPT
 
 Build GPT model from scratch. Learn perf optimiation and practice in the competition. How exhilarating and rewarding. It's named N00bGPT because I barely know nothing about LLM and wanted to how much I can get in 3 weeks. This is my jounery.
 
@@ -183,3 +183,216 @@ Let's look into the code [word2vec](https://github.com/fmars/n00bGPT/blob/main/c
 Our poorman's word2vec seems working well. The loss curve converges in a descent way. However, if you try the classic test, king-man+woman actually works very poorly (which is kind of expected otherwise why they needs hundreds or thunsands gpus to cotrain :)
 
 Now, a fun quiz: write your embedding to load from pre-trained LLM model, and predict what does king-man+woman result. Give it a try before looking into [this](https://github.com/fmars/n00bGPT/blob/main/src/emb_from_pretrained.py).
+
+
+## N00bGPT
+
+<p align="center">
+    <img title="weights mapping" src="https://github.com/fmars/n00bGPT/blob/main/images/chat.png" title="" width="1000" height="200">
+</p>
+
+[mode.py](https://github.com/fmars/n00bGPT/blob/main/src/model.py) and [chat.py](https://github.com/fmars/n00bGPT/blob/main/src/chat.py) is our own version of Transformer implementation from scratch, including 
+- softmax()
+- scaled_dot_product_attention()
+- MultiheadAttention
+- GPTModel
+- GPTLMHeadModel
+ 
+
+
+We load weights from Huggingface pretrained GPT-2, and run text generation. I found it’s not hard to write the initial version, however the generated text doesn’t make sense at all. The challenging part is to make our model correct. First time debugging the numerical issue. I found  it really fun, and of course time consuming :)
+
+**Step 1: How does Huggingface GPT work**
+
+Let’s first look into what happens step by step when we run 
+```
+from transformers import pipeline
+generator = pipeline('text-generation', model='gpt2')
+input = ‘i am a software engineer and i like to'
+generator("input, max_length=30, num_return_sequences=5)
+```
+
+1. A [TextGenerationPipeline](https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/text_generation.py#L24C7-L24C29
+) is created Which is a derived class of [Pipeline](https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/base.py#L1066)
+2. [call](https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/base.py#L1129) method of Pipeline essentially calls derived preprocess(), forward(), postprocess()
+3. [TextGenerationPipeline::_forward()](https://github.com/huggingface/transformers/blob/main/src/transformers/pipelines/text_generation.py#L265 )  calls model.generate(), where model is [GPT2LMHeadModel](https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py#L955)
+4. PretrainedModel derives from GenerationMixin, which defines [generate() method](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L1249)
+5. generate() method first generates [genearation_config](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L1633 ), which has a field called generation_mode, which is sample in our case 
+6. [sample() method](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L2740) set up some configs, then runs into a while true loop, to generate token one at a time, and stops when stop criterion meets
+7. sample() method calls actual model (GPT2LMHeadMode), which has LM head as a MLP, and invokes [forward() method](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L2755)
+8. GPT2LMHHeadModel’s forward contains a [LM head](https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py#L1098 ) on top of basic transformer
+
+
+**Step 2: Fun questions**
+
+- How does stop criterion work?
+    - Generates a [stop criteria list](https://github.com/huggingface/transformers/blob/080a97119c0dabfd0fb5c3e26a872ad2958e4f77/src/transformers/generation/utils.py#L1014), which includes a default list, stop based on max length, and max time 
+    - It seems huggingface currently only uses the most [basic criterions](https://github.com/huggingface/transformers/blob/main/src/transformers/generation/stopping_criteria.py#L36 ) (hmm thought some smart solution is used)
+- How does sample actually work
+    - Sample picks the next token based on multinomial distribution over all possible tokens, which provides some randomness, whereas higher probability token has higher probability to be picked 
+    - It generates one token at a time, through step above, and repeats until stop criterion satisfied
+    - Other generation mode exist, e.g. beam search, greedy search, etc
+- What’s the input and output format of base model
+    - Output is [BaseModelOutputWithPastAndCrossAttentions](https://github.com/huggingface/transformers/blob/main/src/transformers/modeling_outputs.py#L245 )
+- What’s the input and output format of LMHead model
+    - Output is [CausalLMOutputWithCrossAttentions ](https://github.com/huggingface/transformers/blob/main/src/transformers/modeling_outputs.py#L623 )
+
+**Step 3: Inspect and verify each module/method**
+
+1. GPT2Attention <> MultiheadAttention
+2. GPT2MLP <> FeedForward
+3. GPT2Block <> Layer
+4. GPT2Model <> GPTLMHeadModel
+
+Also inspect the correctness of weights mapping.
+ <p align="left">
+    <img title="weights mapping" src="https://github.com/fmars/n00bGPT/blob/main/images/weights_mapping.png" title="" width="1500" height="500">
+</p>
+
+[Parity debugging](https://github.com/fmars/n00bGPT/blob/main/colab/model_parity_debugging.ipynb) are unit tests that we compare Huggingface and our version layer by layer. Below are bugs found in the initial implementation 
+- MultiheadAttention
+    - Huggingface uses dropout in both attention and residual network
+    - (Actually this should have no effect since dropout is disabled automatically in eval mode)
+    - Forgot to implement the attention mask as we’re computing causal attention. Technically it shouldn’t affect final output (i.e. generated text), it affects logits of intermediate hidden state
+        - In torch.nn.functional.scaled_dot_product(), it’s is_causal=True parameter
+    - In the attention layer, both 'in_proj_weight', 'out_proj.weight' require transpose from pretrained weights
+- MLP <> FeedForward
+    - torch gelu runs different than GPT2 gelu_new, though their documentation states the same 
+- Block <> Layer
+    - When adding residual to the attention output, residual should equal to original input (i.e. hidden state) rather than linear norm output 
+
+
+After fixing all of those bugs, our n00bGPT works and finally generates some reasonable text!
+
+
+## 4. Transformer Variants
+- [Transformer model family](https://huggingface.co/docs/transformers/model_summary) gives a good summary
+- [LLAMA2](https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/), Meta's 7B,14B,70B model with 4k sequence length
+- [DeBARTa](https://huggingface.co/docs/transformers/v4.31.0/en/model_doc/deberta#overview) Microsoft optimized transformer arch
+- [BERT](https://huggingface.co/docs/transformers/v4.31.0/en/model_doc/bert#overview ), L: 12, H:1024, A:16. Parameters: 340M
+- [PALM2](https://arxiv.org/abs/2305.10403) Google's latest pretrained model
+- [BigBird](https://huggingface.co/docs/transformers/model_doc/big_bird), a sparse attention mechanism that reduces quadratic dependency on the sequence length to linear.
+- [Fast transformer](https://arxiv.org/abs/1911.02150), optimized attention algorithm to reduce memory pressure on inference
+
+
+## 5. Performance
+
+#### Single card GPU
+Follow [single gpu perf opt](https://huggingface.co/docs/transformers/perf_train_gpu_one) to try out basics techniques. We’ll use our transformer model to measure training QPS, and see [notebook](https://github.com/fmars/n00bGPT/blob/main/colab/single_card_perf_opt.ipynb) for details. Baseline setting is
+```
+batch_size=36
+seq_len=128
+emb_dim=768
+vocab_size=50257
+n_layer=12
+optimizer=adam
+```
+| Desc        | Change       | QPS@T4     |  QPS@V100 |
+| :---        |    :----:   |    :----:   |      ---: |
+| Baseline      |        |  30 | 108 |
+|Torch Dynamo + Inductor | `opt_model = torch.compile(model, backend="inductor")` | 30 | 117 |
+| | batch_size=48 | | 117 |
+| | batch_size=16 | | 107 |
+| Quantization: DMP fp16 | `with torch.cuda.amp.autocast()` | 115 | 344 |
+| Tensor Core with TF32 | `torch.backends.cuda.matmul.allow_tf32 = True` | | 340 | 
+| HG accelerator | `m,opt = accelerator.prepare(m,opt)` | | 115 |
+
+
+#### GPU Memory
+For our transformer, number of parameter is 
+- Embedding table: vocab_size * emb_dim * 2
+- Attention: n_layer * (emb_dim ^ 2) * 9 # mh attention + feed forward
+- LM head: emb_dim * vocab_size
+
+Model weights = num_parameters * 4 
+Optimizer state = num_parameters * 8 (adam for momentum)
+Gradient = num_parameters * 4
+
+[Notebook](https://github.com/fmars/n00bGPT/blob/main/colab/mem_usage.ipynb). Follow simple example program, inspect reserved and allocated memory during training. 
+```python
+class Model(torch.nn.Module):
+  def __init__(self):
+    super().__init__()
+    self.a = torch.nn.Parameter(torch.randn(1024*1024*1024//4).to(dev))
+    self.b = torch.nn.Parameter(torch.randn(1024*1024*1024//4).to(dev))
+
+  def forward(self):
+    c = self.a + self.b
+    d = self.a - self.b
+    e = self.a * self.b
+    f = c + d
+    return f
+
+m = Model()
+opt = torch.optim.Adam(m.parameters())
+for i in range(5)
+  preds = m()
+  loss = torch.mean(preds)
+  loss.backward()
+  opt.step()
+  opt.zero_grad()
+
+before creating model    : GPU memory (Torch) total: 14.7, reserved: 0.0, allocated: 0.0, free: 14.7
+after creating model     : GPU memory (Torch) total: 14.7, reserved: 2.0, allocated: 2.0, free: 12.7
+after creating opt       : GPU memory (Torch) total: 14.7, reserved: 2.0, allocated: 2.0, free: 12.7
+iteration 0
+inside foward 1          : GPU memory (Torch) total: 14.7, reserved: 3.0, allocated: 3.0, free: 11.7
+inside foward 2          : GPU memory (Torch) total: 14.7, reserved: 4.0, allocated: 4.0, free: 10.7
+inside foward 3          : GPU memory (Torch) total: 14.7, reserved: 5.0, allocated: 5.0, free: 9.7
+inside foward4           : GPU memory (Torch) total: 14.7, reserved: 6.0, allocated: 6.0, free: 8.7
+after forward            : GPU memory (Torch) total: 14.7, reserved: 6.0, allocated: 3.0, free: 11.7
+after loss               : GPU memory (Torch) total: 14.7, reserved: 6.0, allocated: 3.0, free: 11.7
+after loss.backward      : GPU memory (Torch) total: 14.7, reserved: 6.0, allocated: 5.0, free: 9.7
+after opt.step           : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 9.0, free: 5.7
+after opt.zero_grad      : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 7.0, free: 7.7
+iteration 1
+inside foward 1          : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 8.0, free: 6.7
+inside foward 2          : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 9.0, free: 5.7
+inside foward 3          : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 10.0, free: 4.7
+inside foward4           : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 11.0, free: 3.7
+after forward            : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 8.0, free: 6.7
+after loss               : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 8.0, free: 6.7
+after loss.backward      : GPU memory (Torch) total: 14.7, reserved: 13.0, allocated: 10.0, free: 4.7
+after opt.step           : GPU memory (Torch) total: 14.7, reserved: 14.0, allocated: 10.0, free: 4.7
+after opt.zero_grad      : GPU memory (Torch) total: 14.7, reserved: 14.0, allocated: 8.0, free: 6.7
+```
+
+#### WIP
+Pt2.0, dynamo + inductor
+JIT + JAX + XLA
+Single card perf tuning 
+https://huggingface.co/docs/transformers/perf_train_gpu_one 
+Distributed training
+Launcher
+Orchestrator 
+Parallelism & Sharding: FSDP & PJIT 
+FSDP 
+https://engineering.fb.com/2021/07/15/open-source/fsdp/ 
+GSPMD & gshard
+
+
+PJIT
+https://irhum.github.io/blog/pjit/ 
+https://jax.readthedocs.io/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html 
+Efficient scaling transformer inference 
+https://arxiv.org/pdf/2211.05102.pdf 
+JAX (model training framework on top of python/numpy, comparable to tensorflow and pytorch)
+https://github.com/google/jax 
+https://jax.readthedocs.io/en/latest/index.html 
+Paxml (Pax) is a ML framework on top of JAX, designed specific for large LLM, comparable to MVAI
+https://github.com/google/paxml 
+Praxis: a layer library on top of Pax
+https://github.com/google/praxis 
+
+
+Questions
+What does JIT mean in details?
+MOE and gating network
+What is JAX and how is it different from Tensorflow?
+What does AutoGrad mean and how is it different from Pytorch’s?
+How does JAX achieve auto parallelism?
+
+
+
+
+
