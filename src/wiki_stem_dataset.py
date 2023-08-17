@@ -107,7 +107,7 @@ class Worker(threading.Thread):
     self.seen_pages = seen_pages
 
   def run(self):
-    cp = 100
+    cp = 300
     pages = []
     for i in tqdm(range(self.n_page)):
         try:
@@ -124,7 +124,7 @@ class Worker(threading.Thread):
 
 def fetch(path, resume):
     n_worker = 1
-    n_page = 500
+    n_page = 50000
     seen_pages = []
 
     if resume:
