@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # pip3 install wikipedia-api
 import os
 import random
@@ -6,6 +7,7 @@ import wikipediaapi
 import numpy as np
 import pandas as pd
 import threading
+import argparse
 
 # probabilities: S -> 0.294; T,E,M -> 0.235
 STEM_WEIGHTS = [1.25, 1, 1, 1]
@@ -96,38 +98,65 @@ def get_wiki_text(seen_pages, min_page_length=6, sentences_include=3):
 
 from tqdm import tqdm
 class Worker(threading.Thread):
-  def __init__(self, id, n_page):
+  def __init__(self, id, n_page, seen_pages, path):
     super().__init__()
     self.id = id
     self.n_page = n_page
     self.min_page_length=6
     self.sentences_include=5
-    self.seen_pages = {}
+    self.seen_pages = seen_pages
 
   def run(self):
-    cp = 1000
+    cp = 100
     pages = []
     for i in tqdm(range(self.n_page)):
         try:
             page = get_wiki_text(self.seen_pages,self.min_page_length,self.sentences_include)
             pages.append(page)
+            self.seen_pages.append(page[1])
         except Exception as e:
             print(f'Ex: {e}')
-        if i != 0 and i % cp ==0:
+        if (i+1) % cp == 0:
             df = pd.DataFrame(pages,columns=['text', 'pageid','title', 'stem_label'])
-            path = f'./data/page_{self.id}_{i}'
-            df.to_csv(path, index=False)
-            print(f'Finish {self.id}: {i}')
+            df.to_csv(os.path.join(path, f'r_{self.id}_{i}.csv'), index=False)
+            print(f'Finish {self.id}: {i}, saving to file')
             pages = []
 
-def fetch():
+def fetch(path, resume):
     n_worker = 1
-    n_page = 50000
-    workers = [Worker(i,n_page) for i in range(n_worker)]
+    n_page = 500
+    seen_pages = []
+
+    if resume:
+        df = pd.read_csv(os.path.join(path,'merged'))
+        n_page -= len(df)
+        seen_pages += df['pageid'].tolist()
+        assert len(df) == len(seen_pages)
+        print(f'Resume fetching. Adding {len(df)} records')
+
+    workers = [Worker(i,n_page,seen_pages,path) for i in range(n_worker)]
     for w in workers:
       w.start()
     for w in workers:
       w.join()
 
+def merge(path):
+    files = [f for _,_,files in os.walk(path) for f in files]
+    dfs = [pd.read_csv(os.path.join(path, file)) for file in files]
+    df = pd.concat(dfs, ignore_index=True)
+    df.to_csv(os.path.join(path,'merged'))
+
 if __name__ == '__main__':
-    fetch()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', '-m', type=str)
+    parser.add_argument('--path', '-p', type=str)
+    parser.add_argument('--resume', '-r', action='store_true')
+    args = parser.parse_args()
+    mode = args.mode
+    path = args.path
+    resume = args.resume
+
+    if mode == 'fetch':
+        fetch(path, resume)
+    elif mode == 'merge':
+        merge(path)
